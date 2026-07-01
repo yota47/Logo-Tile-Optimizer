@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Logo Tile Optimizer</title>
+<style>
+  :root{
+    --paper:#EEF0E9;
+    --paper-raised:#FFFFFF;
+    --paper-sunken:#E3E6DA;
+    --ink:#14161A;
+    --ink-soft:#5B5F55;
+    --ink-faint:#686C62;
+    --line:#CDD1C2;
+    --line-strong:#A6AB97;
+    --red:#E2462B;
+    --red-deep:#B7341E;
+    --cyan:#137183;
+    --yellow:#D89A1E;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono","Cascadia Mono","Roboto Mono",Menlo,Consolas,monospace;
+    --radius:3px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--sans);
+    line-height:1.45;
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{max-width:1180px;margin:0 auto;padding:20px 20px 48px;}
+
+  /* ---------- Topbar ---------- */
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;gap:16px;
+    padding:6px 2px 22px;border-bottom:1px solid var(--line);margin-bottom:22px;
+    flex-wrap:wrap;
+  }
+  .brand{display:flex;align-items:center;gap:12px;}
+  .regmark{flex:none;display:block;}
+  .brand-text h1{
+    font-size:18px;margin:0;font-weight:800;letter-spacing:-0.01em;
+  }
+  .eyebrow{
+    margin:2px 0 0;font-size:10.5px;font-weight:700;letter-spacing:.11em;
+    text-transform:uppercase;color:var(--ink-faint);
+  }
+  .topbar-meta{
+    font-family:var(--mono);font-size:11.5px;color:var(--ink-soft);
+    background:var(--paper-raised);border:1px solid var(--line);
+    padding:6px 10px;border-radius:var(--radius);white-space:nowrap;
+  }
+
+  /* ---------- Layout ---------- */
+  .workspace{display:grid;grid-template-columns:300px 1fr;gap:22px;align-items:start;}
+  @media (max-width:860px){ .workspace{grid-template-columns:1fr;} }
+
+  .rail{display:flex;flex-direction:column;gap:14px;}
+  .panel{
+    background:var(--paper-raised);border:1px solid var(--line);border-radius:var(--radius);
+    padding:14px 14px 16px;
+  }
+  .panel h2{
+    font-size:12px;margin:0 0 10px;font-weight:800;letter-spacing:.04em;
+    display:flex;align-items:center;gap:8px;text-transform:uppercase;
+  }
+  .panel h2 .num{
+    font-family:var(--mono);font-weight:700;color:#fff;background:var(--ink);
+    font-size:10px;padding:2px 5px;border-radius:2px;letter-spacing:0;
+  }
+  .panel.disabledable.is-disabled{opacity:.42;pointer-events:none;}
+  .panel.advanced{padding:0;}
+  .panel.advanced summary{
+    cursor:pointer;padding:12px 14px;font-size:12px;font-weight:800;
+    letter-spacing:.04em;text-transform:uppercase;color:var(--ink-soft);
+    list-style:none;display:flex;align-items:center;justify-content:space-between;
+  }
+  .panel.advanced summary::-webkit-details-marker{display:none;}
+  .panel.advanced summary::after{content:'+';font-family:var(--mono);font-size:14px;}
+  .panel.advanced[open] summary::after{content:'–';}
+  .advanced-body{padding:0 14px 16px;display:flex;flex-direction:column;gap:14px;}
+
+  /* dropzone */
+  .dropzone{
+    border:1.5px dashed var(--line-strong);border-radius:var(--radius);
+    background:var(--paper-sunken);padding:26px 12px;text-align:center;cursor:pointer;
+    transition:border-color .15s, background .15s;
+  }
+  .dropzone:hover,.dropzone:focus-visible{border-color:var(--red);}
+  .dropzone.drag{border-color:var(--red);background:#F4DCD5;}
+  .dz-copy strong{display:block;font-size:13px;margin-bottom:4px;}
+  .dz-copy span{font-size:11.5px;color:var(--ink-soft);}
+
+  .source-info .thumb-row{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;}
+  .source-info img{
+    width:56px;height:56px;object-fit:contain;border:1px solid var(--line);
+    border-radius:2px;background:
+      linear-gradient(45deg, var(--paper-sunken) 25%, transparent 25%),
+      linear-gradient(-45deg, var(--paper-sunken) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, var(--paper-sunken) 75%),
+      linear-gradient(-45deg, transparent 75%, var(--paper-sunken) 75%);
+    background-size:10px 10px;background-position:0 0,0 5px,5px -5px,-5px 0;
+    background-color:#fff;flex:none;
+  }
+  .source-detect{font-size:11.5px;color:var(--ink-soft);}
+  .source-detect code{font-family:var(--mono);font-size:11px;background:var(--paper-sunken);padding:1px 4px;border-radius:2px;}
+  .btn-text{
+    background:none;border:none;color:var(--cyan);font-size:11.5px;font-weight:700;
+    cursor:pointer;padding:0;text-decoration:underline;text-underline-offset:2px;
+  }
+
+  /* shape grid */
+  .shape-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .shape-btn{
+    display:flex;flex-direction:column;align-items:center;gap:6px;
+    border:1.5px solid var(--line);background:var(--paper-raised);border-radius:var(--radius);
+    padding:10px 4px 8px;cursor:pointer;font-size:11px;font-weight:700;color:var(--ink-soft);
+    transition:border-color .12s, color .12s;
+  }
+  .shape-btn svg{display:block;}
+  .shape-btn svg rect, .shape-btn svg circle, .shape-btn svg ellipse{
+    fill:none;stroke:var(--ink-faint);stroke-width:2;
+  }
+  .shape-btn:hover{border-color:var(--line-strong);}
+  .shape-btn.active{border-color:var(--red);color:var(--ink);}
+  .shape-btn.active svg rect, .shape-btn.active svg circle, .shape-btn.active svg ellipse{stroke:var(--red);}
+
+  /* presets / size */
+  .preset-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+  .preset-btn{
+    font-family:var(--mono);font-size:11px;border:1px solid var(--line);background:var(--paper-raised);
+    border-radius:2px;padding:5px 8px;cursor:pointer;color:var(--ink-soft);
+  }
+  .preset-btn:hover{border-color:var(--line-strong);}
+  .preset-btn.active{border-color:var(--cyan);color:var(--cyan);background:#E7F2F4;}
+  .custom-size{display:flex;align-items:center;gap:8px;}
+  .custom-size label{font-size:10.5px;color:var(--ink-faint);display:flex;align-items:center;gap:5px;text-transform:uppercase;letter-spacing:.05em;}
+  .custom-size input{
+    width:64px;font-family:var(--mono);font-size:12.5px;border:1px solid var(--line);
+    border-radius:2px;padding:5px 6px;background:var(--paper-raised);color:var(--ink);
+  }
+
+  /* background panel */
+  .detect-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-soft);margin-bottom:8px;}
+  .swatch{width:18px;height:18px;border-radius:50%;border:1px solid var(--line-strong);flex:none;display:inline-block;}
+  .radio-row{display:flex;align-items:center;gap:8px;font-size:12.5px;margin-bottom:8px;cursor:pointer;}
+  .radio-row input[type=color]{width:26px;height:22px;padding:0;border:1px solid var(--line);border-radius:2px;cursor:pointer;}
+  .radio-row input[type=text]{
+    width:88px;font-family:var(--mono);font-size:11.5px;border:1px solid var(--line);
+    border-radius:2px;padding:4px 6px;background:var(--paper-raised);color:var(--ink);
+  }
+  .radio-row input[type=text].invalid{border-color:var(--red);}
+  .inline-edit{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--ink-faint);}
+
+  /* sliders */
+  .slider-row{display:flex;flex-direction:column;gap:5px;}
+  .slider-row .slabel{
+    display:flex;justify-content:space-between;font-size:11px;color:var(--ink-soft);
+    text-transform:uppercase;letter-spacing:.04em;font-weight:700;
+  }
+  .slider-row .slabel b{font-family:var(--mono);color:var(--ink);font-weight:600;}
+  .slider-row input[type=range]{width:100%;accent-color:var(--red);}
+  .reset-link{font-size:10.5px;color:var(--cyan);background:none;border:none;cursor:pointer;text-decoration:underline;padding:0;align-self:flex-start;}
+
+  /* tags */
+  .tag{font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:2px 6px;border-radius:2px;}
+  .tag-cyan{background:#DDF0F3;color:var(--cyan);}
+
+  /* ---------- Stage ---------- */
+  .stage{display:flex;flex-direction:column;gap:10px;}
+  .stage-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+  .stage-head h2{font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;margin:0;color:var(--ink-soft);}
+  .stage-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .toggle{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink-soft);cursor:pointer;}
+  .toggle input{accent-color:var(--cyan);}
+  select#exportFormat{
+    font-family:var(--mono);font-size:11.5px;border:1px solid var(--line);border-radius:2px;
+    padding:6px 7px;background:var(--paper-raised);color:var(--ink);cursor:pointer;
+  }
+  .btn-primary{
+    font-family:var(--sans);font-weight:800;font-size:12px;letter-spacing:.03em;
+    background:var(--red-deep);color:#fff;border:none;border-radius:2px;padding:9px 16px;
+    cursor:pointer;text-transform:uppercase;transition:background .12s;
+  }
+  .btn-primary:hover:not(:disabled){background:#8F2716;}
+  .btn-primary:disabled{background:var(--line-strong);cursor:not-allowed;}
+
+  .canvas-frame{
+    position:relative;border:1px solid var(--line);border-radius:var(--radius);
+    background-color:#fff;
+    background-image:
+      linear-gradient(45deg, var(--paper-sunken) 25%, transparent 25%),
+      linear-gradient(-45deg, var(--paper-sunken) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, var(--paper-sunken) 75%),
+      linear-gradient(-45deg, transparent 75%, var(--paper-sunken) 75%);
+    background-size:18px 18px;background-position:0 0,0 9px,9px -9px,-9px 0;
+    display:flex;align-items:center;justify-content:center;
+    max-height:62vh;overflow:auto;padding:34px;
+  }
+  .canvas-frame canvas{display:block;max-width:100%;height:auto;}
+  .canvas-frame .corner{position:absolute;width:14px;height:14px;pointer-events:none;}
+  .canvas-frame .corner.tl{top:10px;left:10px;border-top:2px solid var(--ink);border-left:2px solid var(--ink);}
+  .canvas-frame .corner.tr{top:10px;right:10px;border-top:2px solid var(--ink);border-right:2px solid var(--ink);}
+  .canvas-frame .corner.bl{bottom:10px;left:10px;border-bottom:2px solid var(--ink);border-left:2px solid var(--ink);}
+  .canvas-frame .corner.br{bottom:10px;right:10px;border-bottom:2px solid var(--ink);border-right:2px solid var(--ink);}
+  .empty-state{font-size:12.5px;color:var(--ink-faint);text-align:center;max-width:240px;}
+
+  .stage-note{font-family:var(--mono);font-size:11px;color:var(--ink-soft);margin:0;}
+  .stage-note b{color:var(--ink);font-weight:600;}
+
+  .error-banner{
+    background:#FBE3DE;border:1px solid var(--red);color:var(--red-deep);
+    font-size:12.5px;padding:9px 12px;border-radius:2px;margin-bottom:14px;
+  }
+  .error-banner[hidden]{display:none;}
+
+  /* proof sheet */
+  .proofsheet{margin-top:8px;border-top:1px solid var(--line);padding-top:16px;}
+  .proofsheet h3{
+    font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--ink-faint);margin:0 0 10px;
+  }
+  .proofsheet-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;}
+  .proof-card{
+    border:1px solid var(--line);border-radius:var(--radius);background:var(--paper-raised);
+    padding:10px;display:flex;flex-direction:column;align-items:center;gap:8px;
+  }
+  .proof-shape-frame{
+    width:100%;aspect-ratio:auto;display:flex;align-items:center;justify-content:center;
+    background-color:#fff;
+    background-image:
+      linear-gradient(45deg, var(--paper-sunken) 25%, transparent 25%),
+      linear-gradient(-45deg, var(--paper-sunken) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, var(--paper-sunken) 75%),
+      linear-gradient(-45deg, transparent 75%, var(--paper-sunken) 75%);
+    background-size:12px 12px;background-position:0 0,0 6px,6px -6px,-6px 0;
+    border-radius:2px;padding:6px;
+  }
+  .proof-shape-frame canvas{max-width:100%;height:auto;display:block;}
+  .proof-card-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);}
+  .proof-dl{
+    font-family:var(--mono);font-size:10.5px;border:1px solid var(--line);background:var(--paper-raised);
+    border-radius:2px;padding:4px 8px;cursor:pointer;color:var(--ink);
+  }
+  .proof-dl:hover{border-color:var(--cyan);color:var(--cyan);}
+
+  .footnote{
+    margin-top:34px;padding-top:16px;border-top:1px solid var(--line);
+    font-size:11.5px;color:var(--ink-faint);max-width:760px;
+  }
+
+  :focus-visible{outline:2px solid var(--cyan);outline-offset:2px;}
+
+  @media (prefers-reduced-motion: reduce){
+    *{transition:none !important;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <svg class="regmark" width="30" height="30" viewBox="0 0 30 30" aria-hidden="true">
+        <circle cx="11" cy="11" r="7" fill="none" stroke="#E2462B" stroke-width="2" opacity="0.9"/>
+        <circle cx="19" cy="11" r="7" fill="none" stroke="#157E92" stroke-width="2" opacity="0.9"/>
+        <circle cx="15" cy="19" r="7" fill="none" stroke="#D89A1E" stroke-width="2" opacity="0.9"/>
+      </svg>
+      <div class="brand-text">
+        <h1>Logo Tile Optimizer</h1>
+        <p class="eyebrow">Precision placement for tile placeholders</p>
+      </div>
+    </div>
+    <div class="topbar-meta" id="statusMeta">No logo loaded</div>
+  </header>
+
+  <div id="errorBanner" class="error-banner" hidden></div>
+
+  <main class="workspace">
+    <aside class="rail">
+
+      <!-- 01 SOURCE -->
+      <section class="panel" id="panel-source">
+        <h2><span class="num">01</span> Source</h2>
+        <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Upload a logo">
+          <input type="file" id="fileInput" accept=".png,.jpg,.jpeg,.webp,.svg,image/png,image/jpeg,image/webp,image/svg+xml" hidden>
+          <div class="dz-copy">
+            <strong>Drop a logo here</strong>
+            <span>or click to browse — PNG, JPG, WebP, SVG</span>
+          </div>
+        </div>
+        <div class="source-info" id="sourceInfo" hidden>
+          <div class="thumb-row">
+            <img id="origThumb" alt="Original logo preview">
+            <div class="source-detect" id="sourceDetect"></div>
+          </div>
+          <button class="btn-text" id="changeFileBtn" type="button">Replace logo</button>
+        </div>
+      </section>
+
+      <!-- 02 SHAPE -->
+      <section class="panel disabledable is-disabled" id="panel-shape">
+        <h2><span class="num">02</span> Shape</h2>
+        <div class="shape-grid" id="shapeGrid">
+          <button class="shape-btn active" data-shape="circle" type="button">
+            <svg width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="11"/></svg>
+            Circle
+          </button>
+          <button class="shape-btn" data-shape="oval" type="button">
+            <svg width="30" height="30" viewBox="0 0 30 30"><ellipse cx="15" cy="15" rx="13" ry="8"/></svg>
+            Oval
+          </button>
+          <button class="shape-btn" data-shape="square" type="button">
+            <svg width="30" height="30" viewBox="0 0 30 30"><rect x="5" y="5" width="20" height="20"/></svg>
+            Square
+          </button>
+          <button class="shape-btn" data-shape="rectangle" type="button">
+            <svg width="30" height="30" viewBox="0 0 30 30"><rect x="3" y="8" width="24" height="14"/></svg>
+            Rectangle
+          </button>
+        </div>
+      </section>
+
+      <!-- 03 FRAME SIZE -->
+      <section class="panel disabledable is-disabled" id="panel-size">
+        <h2><span class="num">03</span> Frame size</h2>
+        <div class="preset-row" id="presetRow"></div>
+        <div class="custom-size">
+          <label>W <input type="number" id="customW" min="16" max="4000"></label>
+          <label>H <input type="number" id="customH" min="16" max="4000"></label>
+          <span style="font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);">px</span>
+        </div>
+      </section>
+
+      <!-- 04 BACKGROUND -->
+      <section class="panel disabledable is-disabled" id="panel-bg">
+        <h2><span class="num">04</span> Background</h2>
+
+        <div id="bgOpaqueInfo" hidden>
+          <div class="detect-row"><span class="swatch" id="opaqueSwatch"></span> Solid background detected — <code id="opaqueHexLabel"></code></div>
+          <div class="inline-edit">Override <input type="color" id="opaqueColorPicker" value="#ffffff"></div>
+        </div>
+
+        <div id="bgTransparentChoice" hidden>
+          <p style="margin:0 0 8px;font-size:11.5px;color:var(--ink-soft);"><span class="tag tag-cyan">Transparent</span> background detected</p>
+          <label class="radio-row"><input type="radio" name="bgModeRadio" value="transparent" checked> Keep transparency</label>
+          <label class="radio-row"><input type="radio" name="bgModeRadio" value="pick"> Pick color <input type="color" id="bgColorPicker" value="#ffffff"></label>
+          <label class="radio-row"><input type="radio" name="bgModeRadio" value="hex"> HEX / RGB <input type="text" id="bgHexInput" placeholder="#FFFFFF"></label>
+        </div>
+      </section>
+
+      <!-- ADVANCED -->
+      <details class="panel advanced" id="panel-advanced">
+        <summary>Advanced</summary>
+        <div class="advanced-body">
+          <div class="slider-row">
+            <span class="slabel">Fill amount <b id="fillRatioVal">66%</b></span>
+            <input type="range" id="fillRatio" min="40" max="85" value="66">
+          </div>
+          <div class="slider-row">
+            <span class="slabel">Safe margin <b id="marginVal">8%</b></span>
+            <input type="range" id="marginAmt" min="0" max="30" value="8">
+            <button class="reset-link" id="marginReset" type="button">Reset to shape default</button>
+          </div>
+          <div class="slider-row">
+            <span class="slabel">Trim sensitivity <b id="trimVal">24</b></span>
+            <input type="range" id="trimTolerance" min="4" max="80" value="24">
+          </div>
+        </div>
+      </details>
+    </aside>
+
+    <section class="stage">
+      <div class="stage-head">
+        <h2>Proof</h2>
+        <div class="stage-controls">
+          <label class="toggle"><input type="checkbox" id="guideToggle" checked> Safe-zone guide</label>
+          <select id="exportFormat">
+            <option value="png">PNG</option>
+            <option value="webp">WebP</option>
+            <option value="jpeg">JPEG</option>
+          </select>
+          <button class="btn-primary" id="downloadBtn" type="button" disabled>Download</button>
+        </div>
+      </div>
+
+      <div class="canvas-frame" id="canvasFrame">
+        <span class="corner tl"></span><span class="corner tr"></span>
+        <span class="corner bl"></span><span class="corner br"></span>
+        <canvas id="previewCanvas" width="512" height="512"></canvas>
+        <div class="empty-state" id="emptyState">Upload a logo to see the proof here — scaled, centered, and shape-optimized automatically.</div>
+      </div>
+      <p class="stage-note" id="stageNote"></p>
+
+      <div class="proofsheet" id="proofsheetSection" hidden>
+        <h3>Proof sheet — every shape, same logo</h3>
+        <div class="proofsheet-grid" id="proofsheetGrid"></div>
+      </div>
+    </section>
+  </main>
+
+  <p class="footnote">
+    All processing happens locally in your browser — nothing is uploaded anywhere. Best results come from transparent PNGs, SVGs, or logos on a clean solid background. Photographic or gradient backgrounds aren't auto-removed yet.
+  </p>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  /* ============================================================
+     CONSTANTS
+  ============================================================ */
+  const SHAPE_DEFAULT_MARGIN = { circle:0.08, oval:0.08, square:0.12, rectangle:0.08 };
+
+  const PRESETS = {
+    circle:    [{label:'128×128',w:128,h:128},{label:'256×256',w:256,h:256},{label:'512×512',w:512,h:512}],
+    oval:      [{label:'320×200',w:320,h:200},{label:'400×250',w:400,h:250},{label:'600×360',w:600,h:360}],
+    square:    [{label:'150×150',w:150,h:150},{label:'300×300',w:300,h:300},{label:'512×512',w:512,h:512}],
+    rectangle: [{label:'600×400',w:600,h:400},{label:'800×450',w:800,h:450},{label:'1200×630',w:1200,h:630}],
+  };
+
+  const PROOFSHEET_DEFAULTS = {
+    circle:{w:200,h:200}, oval:{w:260,h:160}, square:{w:200,h:200}, rectangle:{w:280,h:170}
+  };
+
+  const ACCEPTED_EXT = ['png','jpg','jpeg','webp','svg'];
+
+  /* ============================================================
+     STATE
+  ============================================================ */
+  const state = {
+    fileName:'',
+    sourceCanvas:null,
+    bbox:null,
+    analysisCache:null, // {data,w,h,hasAlpha,bgColor,scaleInv}
+    hasTransparency:false,
+    detectedBgColor:null,
+    bgMode:'transparent', // 'transparent' | 'color'
+    bgColorHex:'#FFFFFF',
+    shape:'circle',
+    frameW:512,
+    frameH:512,
+    fillRatio:0.66,
+    marginPct:null, // null => use shape default
+    trimTolerance:24,
+    exportCanvas:null,
+  };
+
+  /* ============================================================
+     DOM
+  ============================================================ */
+  const $ = (id)=>document.getElementById(id);
+  const dropzone=$('dropzone'), fileInput=$('fileInput'), sourceInfo=$('sourceInfo'),
+        origThumb=$('origThumb'), sourceDetect=$('sourceDetect'), changeFileBtn=$('changeFileBtn'),
+        errorBanner=$('errorBanner'), statusMeta=$('statusMeta'),
+        shapeGrid=$('shapeGrid'), presetRow=$('presetRow'), customW=$('customW'), customH=$('customH'),
+        bgOpaqueInfo=$('bgOpaqueInfo'), opaqueSwatch=$('opaqueSwatch'), opaqueHexLabel=$('opaqueHexLabel'),
+        opaqueColorPicker=$('opaqueColorPicker'), bgTransparentChoice=$('bgTransparentChoice'),
+        bgColorPicker=$('bgColorPicker'), bgHexInput=$('bgHexInput'),
+        fillRatioSlider=$('fillRatio'), fillRatioVal=$('fillRatioVal'),
+        marginSlider=$('marginAmt'), marginVal=$('marginVal'), marginReset=$('marginReset'),
+        trimSlider=$('trimTolerance'), trimVal=$('trimVal'),
+        guideToggle=$('guideToggle'), exportFormatSel=$('exportFormat'), downloadBtn=$('downloadBtn'),
+        previewCanvas=$('previewCanvas'), emptyState=$('emptyState'), stageNote=$('stageNote'),
+        proofsheetSection=$('proofsheetSection'), proofsheetGrid=$('proofsheetGrid');
+
+  /* ============================================================
+     HELPERS
+  ============================================================ */
+  function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+
+  function rgbToHex(c){
+    const h=n=>clamp(Math.round(n),0,255).toString(16).padStart(2,'0');
+    return '#'+h(c.r)+h(c.g)+h(c.b);
+  }
+  function hexToRgb(hex){
+    hex = (hex||'').replace('#','').trim();
+    if(hex.length===3) hex = hex.split('').map(c=>c+c).join('');
+    if(!/^[0-9a-fA-F]{6}$/.test(hex)) return null;
+    const num = parseInt(hex,16);
+    return { r:(num>>16)&255, g:(num>>8)&255, b:num&255 };
+  }
+  function showError(msg){ errorBanner.textContent = msg; errorBanner.hidden=false; }
+  function clearError(){ errorBanner.hidden = true; }
+
+  function getSafeArea(shape, W, H, marginPct){
+    let safeW, safeH;
+    switch(shape){
+      case 'circle': {
+        const d = Math.min(W,H);
+        const inscribed = d/Math.SQRT2;
+        safeW = safeH = inscribed*(1-marginPct);
+        break;
+      }
+      case 'oval': {
+        safeW = (W/Math.SQRT2)*(1-marginPct);
+        safeH = (H/Math.SQRT2)*(1-marginPct);
+        break;
+      }
+      case 'square': {
+        const m = Math.min(W,H)*marginPct;
+        safeW = W-2*m; safeH = H-2*m;
+        break;
+      }
+      default: { // rectangle
+        const m = Math.min(W,H)*marginPct;
+        safeW = W-2*m; safeH = H-2*m;
+      }
+    }
+    return { w:Math.max(safeW,1), h:Math.max(safeH,1) };
+  }
+
+  function computeLayout(bboxW, bboxH, shape, W, H, marginPct, fillRatio){
+    const safe = getSafeArea(shape, W, H, marginPct);
+    const containScale = Math.min(safe.w/bboxW, safe.h/bboxH);
+    const scale = containScale * fillRatio;
+    const drawW = bboxW*scale, drawH = bboxH*scale;
+    return {
+      scale,
+      drawW, drawH,
+      destX:(W-drawW)/2, destY:(H-drawH)/2,
+      safe
+    };
+  }
+
+  /* ============================================================
+     FILE LOADING & ANALYSIS
+  ============================================================ */
+  function handleNewFile(file){
+    const ext = (file.name.split('.').pop()||'').toLowerCase();
+    const typeOk = ACCEPTED_EXT.includes(ext) || /^image\/(png|jpe?g|webp|svg\+xml)$/.test(file.type||'');
+    if(!typeOk){ showError('Unsupported file type. Use PNG, JPG, WebP, or SVG.'); return; }
+    clearError();
+    state.fileName = file.name;
+    statusMeta.textContent = 'Analyzing…';
+    loadFile(file);
+  }
+
+  function loadFile(file){
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = ()=>{
+      const isSvg = (file.type==='image/svg+xml') || file.name.toLowerCase().endsWith('.svg');
+      let iw = img.naturalWidth || img.width || 300;
+      let ih = img.naturalHeight || img.height || 300;
+      let renderW = iw, renderH = ih;
+      if(isSvg){
+        const longSide = Math.max(iw,ih);
+        const targetLong = clamp(longSide, 800, 2200);
+        const s = targetLong/longSide;
+        renderW = Math.max(1,Math.round(iw*s));
+        renderH = Math.max(1,Math.round(ih*s));
+      }
+      const off = document.createElement('canvas');
+      off.width = renderW; off.height = renderH;
+      const octx = off.getContext('2d');
+      octx.imageSmoothingEnabled = true;
+      octx.imageSmoothingQuality = 'high';
+      try{
+        octx.drawImage(img,0,0,renderW,renderH);
+      }catch(e){
+        showError('Could not render that file. Try a different export of the logo.');
+        URL.revokeObjectURL(url);
+        return;
+      }
+      URL.revokeObjectURL(url);
+      analyzeSource(off);
+    };
+    img.onerror = ()=>{
+      showError('Could not read that file. Try a PNG, JPG, WebP, or SVG.');
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  }
+
+  function buildAnalysisCanvas(srcCanvas, maxDim){
+    const w=srcCanvas.width, h=srcCanvas.height;
+    const longSide = Math.max(w,h);
+    if(longSide<=maxDim) return { canvas:srcCanvas, scale:1 };
+    const scale = maxDim/longSide;
+    const aw = Math.max(1,Math.round(w*scale)), ah = Math.max(1,Math.round(h*scale));
+    const c = document.createElement('canvas'); c.width=aw; c.height=ah;
+    c.getContext('2d').drawImage(srcCanvas,0,0,aw,ah);
+    return { canvas:c, scale: aw/w };
+  }
+
+  function colorDist(r1,g1,b1,r2,g2,b2){
+    const dr=r1-r2, dg=g1-g2, db=b1-b2;
+    return Math.sqrt(dr*dr+dg*dg+db*db);
+  }
+
+  function detectBorderModeColor(data,w,h){
+    const counts = new Map();
+    function add(x,y){
+      const i=(y*w+x)*4;
+      const r=data[i],g=data[i+1],b=data[i+2];
+      const key=(r>>2)+','+(g>>2)+','+(b>>2);
+      const cur=counts.get(key);
+      if(cur){ cur.n++; } else { counts.set(key,{r,g,b,n:1}); }
+    }
+    const stepX=Math.max(1,Math.floor(w/300)), stepY=Math.max(1,Math.floor(h/300));
+    for(let x=0;x<w;x+=stepX){ add(x,0); add(x,h-1); }
+    for(let y=0;y<h;y+=stepY){ add(0,y); add(w-1,y); }
+    let best=null;
+    for(const v of counts.values()){ if(!best||v.n>best.n) best=v; }
+    return best ? {r:best.r,g:best.g,b:best.b} : {r:255,g:255,b:255};
+  }
+
+  function findContentBBox(data,w,h,hasAlpha,bgColor,distThresh){
+    let minX=w,minY=h,maxX=-1,maxY=-1;
+    for(let y=0;y<h;y++){
+      const rowStart=y*w;
+      for(let x=0;x<w;x++){
+        const i=(rowStart+x)*4;
+        const a=data[i+3];
+        let isContent;
+        if(a<10){ isContent=false; }
+        else if(hasAlpha){ isContent = a>10; }
+        else {
+          const d = colorDist(data[i],data[i+1],data[i+2],bgColor.r,bgColor.g,bgColor.b);
+          isContent = d>distThresh;
+        }
+        if(isContent){
+          if(x<minX)minX=x; if(x>maxX)maxX=x;
+          if(y<minY)minY=y; if(y>maxY)maxY=y;
+        }
+      }
+    }
+    if(maxX<minX||maxY<minY) return null;
+    return { x:minX, y:minY, w:(maxX-minX+1), h:(maxY-minY+1) };
+  }
+
+  function analyzeSource(canvas){
+    state.sourceCanvas = canvas;
+    const analysis = buildAnalysisCanvas(canvas, 1100);
+    let data;
+    try{
+      data = analysis.canvas.getContext('2d').getImageData(0,0,analysis.canvas.width,analysis.canvas.height).data;
+    }catch(e){
+      showError('This image could not be analyzed in the browser (it may be cross-origin restricted).');
+      return;
+    }
+    const aw=analysis.canvas.width, ah=analysis.canvas.height;
+
+    let hasAlpha=false;
+    const total=aw*ah;
+    const stride=Math.max(1,Math.floor(total/400000));
+    for(let i=0;i<total;i+=stride){
+      if(data[i*4+3]<250){ hasAlpha=true; break; }
+    }
+
+    let bgColor=null;
+    if(!hasAlpha){ bgColor = detectBorderModeColor(data,aw,ah); }
+
+    state.analysisCache = { data, w:aw, h:ah, hasAlpha, bgColor, scaleInv: 1/analysis.scale };
+    state.hasTransparency = hasAlpha;
+    state.detectedBgColor = bgColor;
+
+    recomputeBBox();
+    onSourceAnalyzed();
+  }
+
+  function recomputeBBox(){
+    const c = state.analysisCache;
+    if(!c) return;
+    const bbox = findContentBBox(c.data, c.w, c.h, c.hasAlpha, c.bgColor, state.trimTolerance);
+    let result;
+    if(!bbox){
+      result = { x:0, y:0, w:state.sourceCanvas.width, h:state.sourceCanvas.height };
+    } else {
+      const inv = c.scaleInv;
+      const x = Math.max(0, Math.floor(bbox.x*inv));
+      const y = Math.max(0, Math.floor(bbox.y*inv));
+      const w = Math.min(state.sourceCanvas.width-x, Math.ceil(bbox.w*inv));
+      const h = Math.min(state.sourceCanvas.height-y, Math.ceil(bbox.h*inv));
+      result = { x, y, w:Math.max(1,w), h:Math.max(1,h) };
+    }
+    state.bbox = result;
+  }
+
+  /* ============================================================
+     UI: AFTER ANALYSIS
+  ============================================================ */
+  function makeThumbDataURL(canvas, maxSize){
+    const w=canvas.width,h=canvas.height;
+    const scale = Math.min(maxSize/w, maxSize/h, 1);
+    const tw=Math.max(1,Math.round(w*scale)), th=Math.max(1,Math.round(h*scale));
+    const t=document.createElement('canvas'); t.width=tw; t.height=th;
+    t.getContext('2d').drawImage(canvas,0,0,tw,th);
+    return t.toDataURL('image/png');
+  }
+
+  function onSourceAnalyzed(){
+    dropzone.hidden = true;
+    sourceInfo.hidden = false;
+    origThumb.src = makeThumbDataURL(state.sourceCanvas,120);
+    emptyState.hidden = true;
+
+    if(state.hasTransparency){
+      sourceDetect.innerHTML = '<span class="tag tag-cyan">Transparent</span> background — pick a fill option below.';
+      bgOpaqueInfo.hidden = true;
+      bgTransparentChoice.hidden = false;
+      state.bgMode = document.querySelector('input[name="bgModeRadio"]:checked').value;
+      syncTransparentBgMode();
+    } else {
+      state.bgColorHex = rgbToHex(state.detectedBgColor);
+      state.bgMode = 'color';
+      opaqueSwatch.style.background = state.bgColorHex;
+      opaqueHexLabel.textContent = state.bgColorHex.toUpperCase();
+      opaqueColorPicker.value = state.bgColorHex;
+      bgOpaqueInfo.hidden = false;
+      bgTransparentChoice.hidden = true;
+    }
+
+    document.querySelectorAll('.disabledable').forEach(p=>p.classList.remove('is-disabled'));
+
+    setupSizePanelForShape(state.shape, true);
+    render();
+  }
+
+  function syncTransparentBgMode(){
+    const checked = document.querySelector('input[name="bgModeRadio"]:checked').value;
+    if(checked==='transparent'){ state.bgMode='transparent'; }
+    else if(checked==='pick'){ state.bgMode='color'; state.bgColorHex = bgColorPicker.value; }
+    else if(checked==='hex'){
+      const rgb = hexToRgb(bgHexInput.value);
+      if(rgb){ state.bgMode='color'; state.bgColorHex = rgbToHex(rgb); bgHexInput.classList.remove('invalid'); }
+      else { bgHexInput.classList.add('invalid'); }
+    }
+  }
+
+  function updateStatusMeta(){
+    if(!state.sourceCanvas){ statusMeta.textContent='No logo loaded'; return; }
+    const t = state.hasTransparency ? 'transparent' : 'opaque';
+    statusMeta.textContent = `${state.fileName} · trimmed ${state.bbox.w}×${state.bbox.h}px · ${t}`;
+  }
+
+  /* ============================================================
+     SHAPE / SIZE PANEL
+  ============================================================ */
+  function setupSizePanelForShape(shape, selectFirst){
+    presetRow.innerHTML='';
+    PRESETS[shape].forEach((p,idx)=>{
+      const b=document.createElement('button');
+      b.type='button'; b.className='preset-btn'; b.textContent=p.label;
+      b.addEventListener('click', ()=>{
+        applyFrameSize(p.w,p.h);
+        presetRow.querySelectorAll('.preset-btn').forEach(x=>x.classList.remove('active'));
+        b.classList.add('active');
+      });
+      if(selectFirst && idx===0) b.classList.add('active');
+      presetRow.appendChild(b);
+    });
+    if(selectFirst){ applyFrameSize(PRESETS[shape][0].w, PRESETS[shape][0].h); }
+    updateMarginDisplayForShape(shape);
+  }
+
+  function applyFrameSize(w,h){
+    state.frameW = clamp(Math.round(w),16,4000);
+    state.frameH = clamp(Math.round(h),16,4000);
+    customW.value = state.frameW;
+    customH.value = state.frameH;
+    render();
+  }
+
+  function clearPresetActive(){
+    presetRow.querySelectorAll('.preset-btn').forEach(x=>x.classList.remove('active'));
+  }
+
+  function onCustomSizeInput(){
+    const w=parseInt(customW.value,10), h=parseInt(customH.value,10);
+    if(Number.isFinite(w)&&Number.isFinite(h)&&w>0&&h>0){
+      state.frameW=clamp(w,16,4000); state.frameH=clamp(h,16,4000);
+      clearPresetActive();
+      render();
+    }
+  }
+  function onCustomSizeBlur(){ customW.value=state.frameW; customH.value=state.frameH; }
+
+  function updateMarginDisplayForShape(shape){
+    if(state.marginPct===null){
+      const def = SHAPE_DEFAULT_MARGIN[shape]*100;
+      marginSlider.value = def;
+      marginVal.textContent = Math.round(def)+'%';
+    }
+  }
+
+  /* ============================================================
+     RENDER
+  ============================================================ */
+  function drawGuide(ctx, shape, W, H, safe){
+    ctx.save();
+    const lw = Math.max(1, Math.min(W,H)*0.004);
+    ctx.lineWidth = lw;
+    ctx.setLineDash([Math.max(4,W*0.012), Math.max(3,W*0.008)]);
+    ctx.strokeStyle = '#E2462B';
+    ctx.beginPath();
+    if(shape==='circle'){
+      const r = Math.min(W,H)/2 - lw;
+      ctx.arc(W/2,H/2, Math.max(r,1), 0, Math.PI*2);
+    } else if(shape==='oval'){
+      ctx.ellipse(W/2,H/2, Math.max(W/2-lw,1), Math.max(H/2-lw,1), 0,0,Math.PI*2);
+    } else {
+      ctx.rect(lw,lw,W-2*lw,H-2*lw);
+    }
+    ctx.stroke();
+
+    ctx.setLineDash([4,4]);
+    ctx.lineWidth = Math.max(1, Math.min(W,H)*0.0025);
+    ctx.strokeStyle = 'rgba(21,126,146,0.6)';
+    ctx.strokeRect((W-safe.w)/2,(H-safe.h)/2, safe.w, safe.h);
+    ctx.restore();
+  }
+
+  function buildCleanCanvas(W,H,shape,marginPct,fillRatio){
+    const c = document.createElement('canvas'); c.width=W; c.height=H;
+    const ctx = c.getContext('2d');
+    const transparent = state.bgMode==='transparent' && state.hasTransparency;
+    if(!transparent){ ctx.fillStyle=state.bgColorHex; ctx.fillRect(0,0,W,H); }
+    const layout = computeLayout(state.bbox.w, state.bbox.h, shape, W, H, marginPct, fillRatio);
+    ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
+    ctx.drawImage(state.sourceCanvas, state.bbox.x, state.bbox.y, state.bbox.w, state.bbox.h,
+                  layout.destX, layout.destY, layout.drawW, layout.drawH);
+    return { canvas:c, layout, transparent };
+  }
+
+  function render(){
+    if(!state.sourceCanvas) return;
+    const W=state.frameW, H=state.frameH;
+    const marginPct = state.marginPct!=null ? state.marginPct : SHAPE_DEFAULT_MARGIN[state.shape];
+
+    const built = buildCleanCanvas(W,H,state.shape,marginPct,state.fillRatio);
+    state.exportCanvas = built.canvas;
+
+    previewCanvas.width=W; previewCanvas.height=H;
+    const pctx = previewCanvas.getContext('2d');
+    pctx.clearRect(0,0,W,H);
+    pctx.drawImage(built.canvas,0,0);
+    if(guideToggle.checked){ drawGuide(pctx, state.shape, W, H, built.layout.safe); }
+
+    const fillPct = Math.round((built.layout.drawW*built.layout.drawH) / (W*H) * 100);
+    stageNote.innerHTML = `<b>${W}×${H}</b> · ${state.shape} · scale <b>${(built.layout.scale).toFixed(2)}×</b> · background: <b>${built.transparent?'transparent':state.bgColorHex.toUpperCase()}</b>`;
+
+    downloadBtn.disabled = false;
+    updateStatusMeta();
+    renderProofsheet();
+
+    // Debug/test hook — exposes real render state (export canvas has no guide overlay).
+    window.__ltoDebug = {
+      exportCanvas: built.canvas,
+      layout: built.layout,
+      frameW: W, frameH: H,
+      shape: state.shape,
+      bgMode: state.bgMode,
+      bgColorHex: state.bgColorHex,
+      transparentExport: built.transparent,
+      bbox: state.bbox,
+      hasTransparency: state.hasTransparency,
+      detectedBgColor: state.detectedBgColor,
+      fillRatio: state.fillRatio,
+      marginPct: marginPct,
+    };
+  }
+
+  function renderProofsheet(){
+    const shapes=['circle','oval','square','rectangle'];
+    proofsheetGrid.innerHTML='';
+    shapes.forEach(shape=>{
+      const dims = PROOFSHEET_DEFAULTS[shape];
+      const marginPct = SHAPE_DEFAULT_MARGIN[shape];
+      const built = buildCleanCanvas(dims.w,dims.h,shape,marginPct,state.fillRatio);
+
+      const card=document.createElement('div'); card.className='proof-card';
+      const frame=document.createElement('div'); frame.className='proof-shape-frame';
+      built.canvas.style.maxWidth='100%'; built.canvas.style.height='auto';
+      frame.appendChild(built.canvas);
+      const label=document.createElement('div'); label.className='proof-card-label'; label.textContent=shape;
+      const dl=document.createElement('button'); dl.type='button'; dl.className='proof-dl';
+      dl.textContent=`Download ${dims.w}×${dims.h}`;
+      dl.addEventListener('click', ()=> downloadCanvas(built.canvas, `logo-${shape}`, 'png'));
+
+      card.appendChild(frame); card.appendChild(label); card.appendChild(dl);
+      proofsheetGrid.appendChild(card);
+    });
+    proofsheetSection.hidden=false;
+  }
+
+  /* ============================================================
+     DOWNLOAD
+  ============================================================ */
+  function downloadCanvas(canvas, filenameBase, format){
+    let mime='image/png', ext='png';
+    if(format==='webp'){ mime='image/webp'; ext='webp'; }
+    if(format==='jpeg'){ mime='image/jpeg'; ext='jpg'; }
+
+    let src = canvas;
+    if(format==='jpeg'){
+      const flat=document.createElement('canvas'); flat.width=canvas.width; flat.height=canvas.height;
+      const fctx=flat.getContext('2d');
+      fctx.fillStyle = (state.bgMode==='color') ? state.bgColorHex : '#FFFFFF';
+      fctx.fillRect(0,0,flat.width,flat.height);
+      fctx.drawImage(canvas,0,0);
+      src = flat;
+    }
+    src.toBlob((blob)=>{
+      if(!blob){ showError('Export failed for that format — try PNG instead.'); return; }
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      a.download=`${filenameBase}-${canvas.width}x${canvas.height}.${ext}`;
+      document.body.appendChild(a); a.click();
+      setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1000);
+    }, mime, format==='jpeg'?0.92:undefined);
+  }
+
+  /* ============================================================
+     EVENT WIRING
+  ============================================================ */
+  dropzone.addEventListener('click', ()=>fileInput.click());
+  dropzone.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); fileInput.click(); } });
+  fileInput.addEventListener('change', e=>{ if(e.target.files[0]) handleNewFile(e.target.files[0]); e.target.value=''; });
+  changeFileBtn.addEventListener('click', ()=>fileInput.click());
+
+  ['dragenter','dragover'].forEach(evt=>dropzone.addEventListener(evt,e=>{ e.preventDefault(); dropzone.classList.add('drag'); }));
+  ['dragleave','drop'].forEach(evt=>dropzone.addEventListener(evt,e=>{ e.preventDefault(); dropzone.classList.remove('drag'); }));
+  dropzone.addEventListener('drop', e=>{ const f=e.dataTransfer.files && e.dataTransfer.files[0]; if(f) handleNewFile(f); });
+
+  shapeGrid.querySelectorAll('.shape-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      shapeGrid.querySelectorAll('.shape-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      state.shape = btn.dataset.shape;
+      setupSizePanelForShape(state.shape, true);
+    });
+  });
+
+  customW.addEventListener('input', onCustomSizeInput);
+  customH.addEventListener('input', onCustomSizeInput);
+  customW.addEventListener('blur', onCustomSizeBlur);
+  customH.addEventListener('blur', onCustomSizeBlur);
+
+  opaqueColorPicker.addEventListener('input', ()=>{
+    state.bgColorHex = opaqueColorPicker.value;
+    opaqueSwatch.style.background = state.bgColorHex;
+    opaqueHexLabel.textContent = state.bgColorHex.toUpperCase();
+    render();
+  });
+
+  document.querySelectorAll('input[name="bgModeRadio"]').forEach(r=>{
+    r.addEventListener('change', ()=>{
+      syncTransparentBgMode();
+      if(r.value==='pick' && r.checked){ setTimeout(()=>{ try{ bgColorPicker.click(); }catch(e){} },0); }
+      render();
+    });
+  });
+  bgColorPicker.addEventListener('input', ()=>{
+    if(document.querySelector('input[name="bgModeRadio"][value="pick"]').checked){
+      state.bgMode='color'; state.bgColorHex=bgColorPicker.value; render();
+    }
+  });
+  bgHexInput.addEventListener('input', ()=>{
+    if(document.querySelector('input[name="bgModeRadio"][value="hex"]').checked){
+      syncTransparentBgMode(); render();
+    }
+  });
+
+  fillRatioSlider.addEventListener('input', ()=>{
+    state.fillRatio = parseFloat(fillRatioSlider.value)/100;
+    fillRatioVal.textContent = fillRatioSlider.value+'%';
+    render();
+  });
+  marginSlider.addEventListener('input', ()=>{
+    state.marginPct = parseFloat(marginSlider.value)/100;
+    marginVal.textContent = marginSlider.value+'%';
+    render();
+  });
+  marginReset.addEventListener('click', ()=>{
+    state.marginPct = null;
+    updateMarginDisplayForShape(state.shape);
+    render();
+  });
+  trimSlider.addEventListener('input', ()=>{
+    state.trimTolerance = parseInt(trimSlider.value,10);
+    trimVal.textContent = state.trimTolerance;
+    if(state.analysisCache){ recomputeBBox(); render(); }
+  });
+
+  guideToggle.addEventListener('change', render);
+  exportFormatSel.addEventListener('change', ()=>{});
+
+  downloadBtn.addEventListener('click', ()=>{
+    if(!state.exportCanvas) return;
+    downloadCanvas(state.exportCanvas, `logo-${state.shape}`, exportFormatSel.value);
+  });
+
+  /* ============================================================
+     INIT
+  ============================================================ */
+  setupSizePanelForShape(state.shape, false);
+  updateMarginDisplayForShape(state.shape);
+
+})();
+</script>
+</body>
+</html>
